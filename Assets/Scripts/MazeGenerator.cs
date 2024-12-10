@@ -9,9 +9,11 @@ public class MazeGenerator : MonoBehaviour{
 
     public Cell[,] grid;
     public bool isGenerated;
+    public MazeStateManager mazeStateManager;
     private List<Vector2Int> wallList;
 
     void Start(){
+        mazeStateManager = FindAnyObjectByType<MazeStateManager>();
         InitializeGrid();
         GenerateMaze();
         DrawMaze();
@@ -23,8 +25,13 @@ public class MazeGenerator : MonoBehaviour{
     void InitializeGrid(){
         grid = new Cell[width, height];
         for (int x = 0; x < width; x++)
-            for (int y = 0; y < height; y++)
-                grid[x, y] = new Cell();
+            for (int y = 0; y < height; y++){
+                Cell temp = new Cell();
+                temp.x = x;
+                temp.y = y;
+                grid[x, y] = temp;
+                mazeStateManager.RegisterCell(temp);
+            }
     }
 
     void GenerateMaze(){
@@ -48,6 +55,9 @@ public class MazeGenerator : MonoBehaviour{
 
             ProcessWall(wall);
         }
+
+        mazeStateManager.width = width;
+        mazeStateManager.height = height;
     }
 
     void AddWallsToList(int x, int y){

@@ -24,11 +24,17 @@ public class MazeGenerator : MonoBehaviour{
 
     void InitializeGrid(){
         grid = new Cell[width, height];
+        System.Random rand = new System.Random();
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++){
                 Cell temp = new Cell();
                 temp.x = x;
                 temp.y = y;
+                double roll = rand.NextDouble();
+                if (roll < 0.2)
+                    temp.hiddenReward = 10f;
+                else if (roll < 0.4)
+                    temp.hiddenReward = -5f;
                 grid[x, y] = temp;
                 mazeStateManager.RegisterCell(temp);
             }

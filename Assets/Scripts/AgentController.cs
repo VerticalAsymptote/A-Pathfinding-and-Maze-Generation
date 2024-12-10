@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class AgentController : MonoBehaviour{
     public MazeStateManager mazeStateManager;
@@ -15,5 +16,19 @@ public class AgentController : MonoBehaviour{
         }
         else
             Debug.LogError("Start state not found!");
+    }
+
+    void Update(){
+        if (Keyboard.current.sKey.wasPressedThisFrame)
+            SenseCurrentCell();
+    }
+
+    void SenseCurrentCell(){
+        if (!currentState.IsRevealed){
+            currentState.Reveal();
+            Debug.Log($"Cell ({currentState.x}, {currentState.y}) revealed with reward {currentState.hiddenReward}");
+        }
+        else 
+            Debug.Log("Cell already revealed.");
     }
 }

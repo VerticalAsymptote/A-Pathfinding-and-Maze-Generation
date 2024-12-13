@@ -1,7 +1,8 @@
 using UnityEngine;
 
 public class Cell{
-    public Vector3 position = new Vector3(0f, 0f, 0f);
+    public Vector2Int position;
     public bool isWall = true;
     public bool isVisited = false;
+    public Cell nextCell = null;
 }

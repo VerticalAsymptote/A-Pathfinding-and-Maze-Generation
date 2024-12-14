@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using UnityEngine;
 
 public class MazeGenerator : MonoBehaviour{
@@ -18,12 +17,12 @@ public class MazeGenerator : MonoBehaviour{
     void Start(){
         openList = new Dictionary<(int, int), Cell>();
         closedList = new List<Cell>();
-        InitCells();
-        GenerateMaze();
-        DrawMaze();
+        initCells();
+        generateMaze();
+        drawMaze();
     }
 
-    void InitCells(){
+    void initCells(){
         for (int x = 0; x < length; x++)
             for (int y = 0; y < width; y++){
                 Cell newCell = new Cell();
@@ -36,52 +35,57 @@ public class MazeGenerator : MonoBehaviour{
     // Chooses a random cell in openList to act as the first part of the maze.
     // Finds another random cell to act as the starting cell.
     // While the current cell is not the starting cell,
-    private void GenerateMaze(){
+    private void generateMaze(){
         Cell endCell = getRandom();
         closedList.Add(endCell);
-        Cell currentCell = getRandom();
 
-        List<Cell> path = FindPath(currentCell);
-        List<Cell> fixedPath = new List<Cell>{currentCell};
-        currentCell = path[0];
-        while (!closedList.Any(c => c.position == currentCell.position)){
-            Cell nextCell = currentCell.nextCell;
-            fixedPath.Add(currentCell);
-            currentCell = nextCell;
+        while (closedList.Count != openList.Count){
+            Cell currentCell = getRandom();
+            while (closedList.Any(c => c == currentCell))
+                currentCell = getRandom();
+            List<Cell> path = FindPath(currentCell);
+            addPathtoList(path);
         }
 
-        foreach (Cell cell in fixedPath){
-            closedList.Add(cell);
-        }
+        Debug.Log("Time to Generate: " + Time.realtimeSinceStartup + "s");
     }
 
-    // Finds path by determining a starting cell and applying a random walk. When the next cell is in the maze, the path is created.
-    // If the path loops upon itself, the current loop is reset.
-    // Returns a list of cells.
-    private List<Cell> FindPath(Cell startingCell){
-        List<Cell> path = new List<Cell>();
-        while (!closedList.Any(c => c.position == startingCell.position)){
-            Cell nextCell = performRandomWalk(startingCell);
-            if (path.Any(c => c.position == nextCell.position)){
-                startingCell = path[0];
-                path.Clear();
-                path.Add(startingCell);
-                continue;
-            }
-            startingCell.nextCell = nextCell;
-            path.Add(startingCell);
-            startingCell = nextCell;
-        }
-        return path;
-    }
-
-    private void DrawMaze(){
+    // Displays the maze in according to paths and walls.
+    private void drawMaze(){
         foreach (Cell cell in closedList){
             Vector3 position = new Vector3(cell.position.x, 0f, cell.position.y);
             //Instantiate(cellPrefab, position, Quaternion.identity);
             if (cell.isWall)
                 Instantiate(wallPrefab, position, Quaternion.identity);
         }
+    }
+
+    // Finds path by determining a starting cell and applying a random walk. When the next cell is in the maze, the path is created.
+    // If the path loops upon itself, the current loop is reset.
+    // After the path is completed, retravel the path to remove extra paths.
+    // Returns a list of cells.
+    private List<Cell> FindPath(Cell startingCell){
+        List<Cell> path = new List<Cell>();
+        while (!closedList.Any(c => c.position == startingCell.position)){
+            Cell nextCell = performRandomWalk(startingCell);
+            if (path.Any(c => c.position == nextCell.position)){
+                path = eraseLoop(nextCell, path);
+                startingCell = path.Last();
+                continue;
+            }
+            startingCell.nextCell = nextCell;
+            path.Add(startingCell);
+            startingCell = nextCell;
+            }
+
+        Cell cell = path[0];
+        List<Cell> fixedPath = new List<Cell>{cell};
+        while (cell != path.Last()){
+            Cell nextCell = cell.nextCell;
+            fixedPath.Add(nextCell);
+            cell = nextCell;
+        }
+        return fixedPath;
     }
 
     // Gets a random cell from openList.
@@ -114,5 +118,20 @@ public class MazeGenerator : MonoBehaviour{
         return cells;
     }
 
-}
+    // When the cell is in path, it erases all data after the index of the cell.
+    // Returns a new list of cells.
+    private List<Cell> eraseLoop(Cell cell, List<Cell> path){
+        List<Cell> newPath = new List<Cell>();
+        int index = path.IndexOf(cell);
+        for (int i = 0; i <= index; i++){
+            newPath.Add(path[i]);
+        }
+        return newPath;
+    }
 
+    private void addPathtoList(List<Cell> path){
+        foreach (Cell cell in path){
+            closedList.Add(cell);
+        }
+    }
+}

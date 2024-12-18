@@ -13,10 +13,12 @@ public class MazeGenerator : MonoBehaviour{
     public Cell[,] mazeData;
     public Dictionary<(int, int), Cell> openList;
     public List<Cell> closedList;
+    public List<Vector3> wallList;
     
     void Start(){
         openList = new Dictionary<(int, int), Cell>();
         closedList = new List<Cell>();
+        wallList = new List<Vector3>();
         initCells();
         generateMaze();
         drawMaze();
@@ -43,7 +45,8 @@ public class MazeGenerator : MonoBehaviour{
             Cell currentCell = getRandom();
             while (closedList.Any(c => c == currentCell))
                 currentCell = getRandom();
-            List<Cell> path = FindPath(currentCell);
+            List<Cell> path = findPath(currentCell);
+            processWalls(path);
             addPathtoList(path);
         }
 
@@ -64,7 +67,7 @@ public class MazeGenerator : MonoBehaviour{
     // If the path loops upon itself, the current loop is reset.
     // After the path is completed, retravel the path to remove extra paths.
     // Returns a list of cells.
-    private List<Cell> FindPath(Cell startingCell){
+    private List<Cell> findPath(Cell startingCell){
         List<Cell> path = new List<Cell>();
         while (!closedList.Any(c => c.position == startingCell.position)){
             Cell nextCell = performRandomWalk(startingCell);
@@ -81,6 +84,7 @@ public class MazeGenerator : MonoBehaviour{
         Cell cell = path[0];
         List<Cell> fixedPath = new List<Cell>{cell};
         while (cell != path.Last()){
+            cell.isVisited = true;
             Cell nextCell = cell.nextCell;
             fixedPath.Add(nextCell);
             cell = nextCell;
@@ -132,6 +136,28 @@ public class MazeGenerator : MonoBehaviour{
     private void addPathtoList(List<Cell> path){
         foreach (Cell cell in path){
             closedList.Add(cell);
+        }
+    }
+
+    private void processWalls(List<Cell> path){
+        foreach (Cell cell in path){
+            foreach (Cell c in getNeighbors(cell)){
+                if (c.isVisited){
+                    Vector2 left, right;
+                    Vector2Int direction = c.position - cell.position;
+                    switch (direction){
+                        case Vector2Int v when v.Equals(Vector2Int.up) || v.Equals(Vector2Int.down):
+                            left = cell.position - new Vector2(0f, -0.5f);
+                            right = cell.position - new Vector2(0f, 0.5f);
+                            break;
+                        case Vector2Int v when v.Equals(Vector2Int.left) || v.Equals(Vector2Int.right):
+                            left = cell.position - new Vector2(-0.5f, 0f);
+                            right = cell.position - new Vector2(0.5f, 0f);
+                            break;
+                    }
+                    Instantiate(wallPrefab, new Vector3(left.x, 0f, left.y), Quaternion.identity);
+                }
+            }
         }
     }
 }

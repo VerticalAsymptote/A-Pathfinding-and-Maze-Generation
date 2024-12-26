@@ -10,15 +10,12 @@ public class MazeGenerator : MonoBehaviour{
     [SerializeField]
     GameObject cellPrefab, wallPrefab;
 
-    public Cell[,] mazeData;
-    public Dictionary<(int, int), Cell> openList;
-    public List<Cell> closedList;
-    public List<Vector3> wallList;
+    private Dictionary<(int, int), Cell> openList;
+    private HashSet<Cell> closedList;
     
     void Start(){
-        openList = new Dictionary<(int, int), Cell>();
-        closedList = new List<Cell>();
-        wallList = new List<Vector3>();
+        openList = new Dictionary<(int, int), Cell>(length * width);
+        closedList = new HashSet<Cell>(length * width);
         initCells();
         generateMaze();
         drawMaze();
@@ -27,9 +24,7 @@ public class MazeGenerator : MonoBehaviour{
     void initCells(){
         for (int x = 0; x < length; x++)
             for (int y = 0; y < width; y++){
-                Cell newCell = new Cell();
-                Vector2Int pos = new Vector2Int(x, y);
-                newCell.position = pos;
+                Cell newCell = new Cell(new Vector2Int(x, y));
                 openList.Add((x, y), newCell);
             }
     }
@@ -43,7 +38,7 @@ public class MazeGenerator : MonoBehaviour{
 
         while (closedList.Count != openList.Count){
             Cell currentCell = getRandom();
-            while (closedList.Any(c => c == currentCell))
+            while (closedList.Contains(currentCell))
                 currentCell = getRandom();
             List<Cell> path = findPath(currentCell);
             processWalls(path);
@@ -57,9 +52,7 @@ public class MazeGenerator : MonoBehaviour{
     private void drawMaze(){
         foreach (Cell cell in closedList){
             Vector3 position = new Vector3(cell.position.x, 0f, cell.position.y);
-            //Instantiate(cellPrefab, position, Quaternion.identity);
-            if (cell.isWall)
-                Instantiate(wallPrefab, position, Quaternion.identity);
+            Instantiate(cellPrefab, position, Quaternion.identity);
         }
     }
 
@@ -69,9 +62,9 @@ public class MazeGenerator : MonoBehaviour{
     // Returns a list of cells.
     private List<Cell> findPath(Cell startingCell){
         List<Cell> path = new List<Cell>();
-        while (!closedList.Any(c => c.position == startingCell.position)){
+        while (!closedList.Contains(startingCell)){
             Cell nextCell = performRandomWalk(startingCell);
-            if (path.Any(c => c.position == nextCell.position)){
+            if (path.Contains(nextCell)){
                 path = eraseLoop(nextCell, path);
                 startingCell = path.Last();
                 continue;
@@ -110,15 +103,15 @@ public class MazeGenerator : MonoBehaviour{
     // Returns a list of cells that are open.
     private List<Cell> getNeighbors(Cell cell){
         List<Cell> cells = new List<Cell>();
-        if (openList.ContainsKey((cell.position.x, cell.position.y + 1)))
-            cells.Add(openList[(cell.position.x, cell.position.y + 1)]);
-        if (openList.ContainsKey((cell.position.x + 1, cell.position.y)))
-            cells.Add(openList[(cell.position.x + 1, cell.position.y)]);        
-        if (openList.ContainsKey((cell.position.x, cell.position.y - 1)))
-            cells.Add(openList[(cell.position.x, cell.position.y - 1)]);       
-        if (openList.ContainsKey((cell.position.x - 1, cell.position.y)))
-            cells.Add(openList[(cell.position.x - 1, cell.position.y)]);
-
+        Cell neighbor;
+        if (openList.TryGetValue((cell.position.x, cell.position.y + 1), out neighbor))
+            cells.Add(neighbor);
+         if (openList.TryGetValue((cell.position.x + 1, cell.position.y), out neighbor))
+            cells.Add(neighbor);
+        if (openList.TryGetValue((cell.position.x, cell.position.y - 1), out neighbor))
+            cells.Add(neighbor);
+        if (openList.TryGetValue((cell.position.x - 1, cell.position.y), out neighbor))
+            cells.Add(neighbor);
         return cells;
     }
 
@@ -139,24 +132,24 @@ public class MazeGenerator : MonoBehaviour{
         }
     }
 
+    private Vector3 averagePosition(Cell a, Cell b){
+        float x = (a.position.x + b.position.x) / 2.0f;
+        float z = (a.position.y + b.position.y) / 2.0f;
+        return new Vector3(x, 1.0f, z);
+    }
+    
     private void processWalls(List<Cell> path){
-        foreach (Cell cell in path){
-            foreach (Cell c in getNeighbors(cell)){
-                if (c.isVisited){
-                    Vector2 left, right;
-                    Vector2Int direction = c.position - cell.position;
-                    switch (direction){
-                        case Vector2Int v when v.Equals(Vector2Int.up) || v.Equals(Vector2Int.down):
-                            left = cell.position - new Vector2(0f, -0.5f);
-                            right = cell.position - new Vector2(0f, 0.5f);
-                            break;
-                        case Vector2Int v when v.Equals(Vector2Int.left) || v.Equals(Vector2Int.right):
-                            left = cell.position - new Vector2(-0.5f, 0f);
-                            right = cell.position - new Vector2(0.5f, 0f);
-                            break;
+        foreach (Cell currentCell in path){
+            foreach (Cell neighbor in getNeighbors(currentCell)){
+                if (neighbor != null && currentCell.nextCell != neighbor)
+                    if (neighbor.isVisited){
+                        Vector3 position = averagePosition(currentCell, neighbor);
+                        Quaternion wallRotation = Quaternion.identity;
+                        string direction = currentCell.getDirection();
+                        if (direction == "Horizontal")
+                            wallRotation = Quaternion.Euler(0f, 90f, 0f);
+                        Instantiate(wallPrefab, position, wallRotation);
                     }
-                    Instantiate(wallPrefab, new Vector3(left.x, 0f, left.y), Quaternion.identity);
-                }
             }
         }
     }

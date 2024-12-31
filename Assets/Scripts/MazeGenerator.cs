@@ -12,13 +12,25 @@ public class MazeGenerator : MonoBehaviour{
 
     private Dictionary<(int, int), Cell> openList;
     private HashSet<Cell> closedList;
+    private HashSet<Vector3> wallsList;
     
     void Start(){
         openList = new Dictionary<(int, int), Cell>(length * width);
         closedList = new HashSet<Cell>(length * width);
+        wallsList = new HashSet<Vector3>();
         initCells();
         generateMaze();
         drawMaze();
+        for (int i = 0; i < width; i++){
+            Instantiate(wallPrefab, new Vector3(-0.5f, 1f, i), Quaternion.identity);
+            Instantiate(wallPrefab, new Vector3(length - 0.5f, 1f, i), Quaternion.identity);
+        }
+        for (int i = 0; i < length; i++){
+            Instantiate(wallPrefab, new Vector3(i, 1f, -0.5f), Quaternion.Euler(0f, 90f, 0f));
+            Instantiate(wallPrefab, new Vector3(i, 1f, width - 0.5f), Quaternion.Euler(0f, 90f, 0f));
+        }
+        Cell endCell = getRandom();
+        closedList.Add(endCell);
     }
 
     void initCells(){
@@ -44,15 +56,13 @@ public class MazeGenerator : MonoBehaviour{
             processWalls(path);
             addPathtoList(path);
         }
-
-        Debug.Log("Time to Generate: " + Time.realtimeSinceStartup + "s");
     }
 
     // Displays the maze in according to paths and walls.
     private void drawMaze(){
         foreach (Cell cell in closedList){
             Vector3 position = new Vector3(cell.position.x, 0f, cell.position.y);
-            Instantiate(cellPrefab, position, Quaternion.identity);
+            Instantiate(cellPrefab, position, cell.getDirection());
         }
     }
 
@@ -102,7 +112,7 @@ public class MazeGenerator : MonoBehaviour{
     // Checks if there are any open cells in the 4 directions of the current cell - Up, Right, Down, Left.
     // Returns a list of cells that are open.
     private List<Cell> getNeighbors(Cell cell){
-        List<Cell> cells = new List<Cell>();
+        List<Cell> cells = new List<Cell>(4);
         Cell neighbor;
         if (openList.TryGetValue((cell.position.x, cell.position.y + 1), out neighbor))
             cells.Add(neighbor);
@@ -135,22 +145,26 @@ public class MazeGenerator : MonoBehaviour{
     private Vector3 averagePosition(Cell a, Cell b){
         float x = (a.position.x + b.position.x) / 2.0f;
         float z = (a.position.y + b.position.y) / 2.0f;
-        return new Vector3(x, 1.0f, z);
-    }
+        return new Vector3(x, 1f, z);
+    } 
     
     private void processWalls(List<Cell> path){
         foreach (Cell currentCell in path){
             foreach (Cell neighbor in getNeighbors(currentCell)){
-                if (neighbor != null && currentCell.nextCell != neighbor)
-                    if (neighbor.isVisited){
+                if (currentCell.nextCell != neighbor && neighbor.nextCell != currentCell)
+                    if (neighbor.isVisited && neighbor != null){
                         Vector3 position = averagePosition(currentCell, neighbor);
+                        if (wallsList.Contains(position))
+                            continue;
+                        wallsList.Add(position);
+                        Vector2Int direction = neighbor.position - currentCell.position;
                         Quaternion wallRotation = Quaternion.identity;
-                        string direction = currentCell.getDirection();
-                        if (direction == "Horizontal")
+                        if (direction == Vector2Int.up || direction == Vector2Int.down)
                             wallRotation = Quaternion.Euler(0f, 90f, 0f);
-                        Instantiate(wallPrefab, position, wallRotation);
+                        Instantiate(wallPrefab, position, wallRotation);  
                     }
             }
         }
     }
+
 }

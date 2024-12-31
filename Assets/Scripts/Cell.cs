@@ -11,15 +11,21 @@ public class Cell{
         isVisited = false;
         nextCell = null;
     }
-    public string getDirection(){
+    public Quaternion getDirection(){
+        if (nextCell == null)
+            return Quaternion.Euler(90f, 0f, 0f);
         Vector2Int direction = nextCell.position - position;
         switch(direction){
-            case Vector2Int v when v.Equals(Vector2Int.up) || v.Equals(Vector2Int.down):
-                return "Vertical";
-            case Vector2Int v when v.Equals(Vector2Int.left) || v.Equals(Vector2Int.right):
-                return "Horizontal";
+            case Vector2Int v when v.Equals(Vector2Int.up):
+                return Quaternion.identity;
+            case Vector2Int v when v.Equals(Vector2Int.down):
+                return Quaternion.Euler(0f, 180f, 0f);
+            case Vector2Int v when v.Equals(Vector2Int.left):
+                return Quaternion.Euler(0f, -90f, 0f);
+            case Vector2Int v when v.Equals(Vector2Int.right):
+                return Quaternion.Euler(0f, 90f, 0f);
             default:
-                return "None";
+                return Quaternion.identity;
         }
     }
 }

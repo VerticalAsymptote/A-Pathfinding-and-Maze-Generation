@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -5,166 +6,83 @@ using UnityEngine;
 public class MazeGenerator : MonoBehaviour{
 
     [SerializeField]
-    public int length, width; // Length = x-axis, Width = y-axis
+    private int length, width; // Length = x-axis, Width = y-axis
 
     [SerializeField]
-    GameObject cellPrefab, wallPrefab;
+    private GameObject cellPrefab, wallPrefab;
 
     private Dictionary<(int, int), Cell> openList;
     private HashSet<Cell> closedList;
-    private HashSet<Vector3> wallsList;
+
+    private Maze maze;
     
     void Start(){
+        generateMaze();
+    }
+
+    public void generateMaze(){
+        maze = new Maze(length, width, cellPrefab, wallPrefab);
         openList = new Dictionary<(int, int), Cell>(length * width);
         closedList = new HashSet<Cell>(length * width);
-        wallsList = new HashSet<Vector3>();
-        initCells();
-        generateMaze();
-        drawMaze();
-        for (int i = 0; i < width; i++){
-            Instantiate(wallPrefab, new Vector3(-0.5f, 1f, i), Quaternion.identity);
-            Instantiate(wallPrefab, new Vector3(length - 0.5f, 1f, i), Quaternion.identity);
-        }
-        for (int i = 0; i < length; i++){
-            Instantiate(wallPrefab, new Vector3(i, 1f, -0.5f), Quaternion.Euler(0f, 90f, 0f));
-            Instantiate(wallPrefab, new Vector3(i, 1f, width - 0.5f), Quaternion.Euler(0f, 90f, 0f));
-        }
-        Cell endCell = getRandom();
-        closedList.Add(endCell);
+        for (int y = 0; y < length; y++)
+            for (int x = 0; x < width; x++)
+                openList.Add((x, y), maze.MazeData[x, y]);
+            
+
+
+        Cell random = openList[(UnityEngine.Random.Range(0, length), UnityEngine.Random.Range(0, width))];
+        closedList.Add(random);
+        openList.Remove((random.position.x, random.position.y));
+        //while (openList.Count > 0){
+            random = openList[(UnityEngine.Random.Range(0, length), UnityEngine.Random.Range(0, width))];
+            transferPath(performRandomWalk(random));
+        //}
     }
 
-    void initCells(){
-        for (int x = 0; x < length; x++)
-            for (int y = 0; y < width; y++){
-                Cell newCell = new Cell(new Vector2Int(x, y));
-                openList.Add((x, y), newCell);
-            }
-    }
-
-    // Chooses a random cell in openList to act as the first part of the maze.
-    // Finds another random cell to act as the starting cell.
-    // While the current cell is not the starting cell,
-    private void generateMaze(){
-        Cell endCell = getRandom();
-        closedList.Add(endCell);
-
-        while (closedList.Count != openList.Count){
-            Cell currentCell = getRandom();
-            while (closedList.Contains(currentCell))
-                currentCell = getRandom();
-            List<Cell> path = findPath(currentCell);
-            processWalls(path);
-            addPathtoList(path);
-        }
-    }
-
-    // Displays the maze in according to paths and walls.
-    private void drawMaze(){
-        foreach (Cell cell in closedList){
-            Vector3 position = new Vector3(cell.position.x, 0f, cell.position.y);
-            Instantiate(cellPrefab, position, cell.getDirection());
-        }
-    }
-
-    // Finds path by determining a starting cell and applying a random walk. When the next cell is in the maze, the path is created.
-    // If the path loops upon itself, the current loop is reset.
-    // After the path is completed, retravel the path to remove extra paths.
-    // Returns a list of cells.
-    private List<Cell> findPath(Cell startingCell){
-        List<Cell> path = new List<Cell>();
-        while (!closedList.Contains(startingCell)){
-            Cell nextCell = performRandomWalk(startingCell);
-            if (path.Contains(nextCell)){
-                path = eraseLoop(nextCell, path);
-                startingCell = path.Last();
+    private HashSet<Cell> performRandomWalk(Cell startCell){
+        HashSet<Cell> currentPath = new HashSet<Cell>();
+        while (!closedList.Contains(startCell)){
+            Cell nextCell = startCell.neighbors[UnityEngine.Random.Range(0, startCell.neighbors.Count)];
+            if (currentPath.Contains(nextCell)){
+                currentPath = eraseLoop(currentPath, nextCell);
+                startCell = currentPath.Last();
                 continue;
             }
-            startingCell.nextCell = nextCell;
-            path.Add(startingCell);
-            startingCell = nextCell;
-            }
-
-        Cell cell = path[0];
-        List<Cell> fixedPath = new List<Cell>{cell};
-        while (cell != path.Last()){
-            cell.isVisited = true;
-            Cell nextCell = cell.nextCell;
-            fixedPath.Add(nextCell);
-            cell = nextCell;
+            Debug.Log("Start Cell: " + startCell.position);
+            Debug.Log("End Cell: " + nextCell.position);
+            startCell.setRotation(startCell.position, nextCell.position);
+            Debug.Log("Rotation: " + startCell.direction);
+            currentPath.Add(startCell);
+            startCell = nextCell;
         }
-        return fixedPath;
-    }
+        //return currentPath;
 
-    // Gets a random cell from openList.
-    // Returns the random cell.
-    private Cell getRandom(){
-        List<Cell> cells = new List<Cell>(openList.Values);
-        return cells[Random.Range(0, cells.Count)];
-    }
-
-    // When provided a cell, chooses a random neighboring cell that is not yet chosen to go into.
-    // Returns the chosen cell.
-    private Cell performRandomWalk(Cell previousCell){
-        List<Cell> neighbors = getNeighbors(previousCell);
-        return neighbors[Random.Range(0, neighbors.Count)];
-    }
-
-    // Checks if there are any open cells in the 4 directions of the current cell - Up, Right, Down, Left.
-    // Returns a list of cells that are open.
-    private List<Cell> getNeighbors(Cell cell){
-        List<Cell> cells = new List<Cell>(4);
-        Cell neighbor;
-        if (openList.TryGetValue((cell.position.x, cell.position.y + 1), out neighbor))
-            cells.Add(neighbor);
-         if (openList.TryGetValue((cell.position.x + 1, cell.position.y), out neighbor))
-            cells.Add(neighbor);
-        if (openList.TryGetValue((cell.position.x, cell.position.y - 1), out neighbor))
-            cells.Add(neighbor);
-        if (openList.TryGetValue((cell.position.x - 1, cell.position.y), out neighbor))
-            cells.Add(neighbor);
-        return cells;
-    }
-
-    // When the cell is in path, it erases all data after the index of the cell.
-    // Returns a new list of cells.
-    private List<Cell> eraseLoop(Cell cell, List<Cell> path){
-        List<Cell> newPath = new List<Cell>();
-        int index = path.IndexOf(cell);
-        for (int i = 0; i <= index; i++){
-            newPath.Add(path[i]);
+        startCell = currentPath.First();
+        HashSet<Cell> newPath = new HashSet<Cell>();
+        Vector3 currentPos = new Vector3(startCell.position.x, 0f, startCell.position.y);
+        Vector3 endPos = new Vector3(currentPath.Last().position.x, 0f, currentPath.Last().position.y);
+        //Debug.Log("End Position: " + endPos);
+        while (currentPos != endPos){
+            //Debug.Log("Current Position: " + currentPos);
+            //Debug.Log("Rotation: " + startCell.direction);
+            newPath.Add(openList[(Mathf.RoundToInt(currentPos.x), Mathf.RoundToInt(currentPos.z))]);
+            if (startCell.direction != Quaternion.Euler(90f, 90f, 90f))
+                currentPos += startCell.direction * new Vector3(1, 0, 0);
+            startCell = newPath.Last();
+            startCell.isVisited = true;
         }
         return newPath;
     }
 
-    private void addPathtoList(List<Cell> path){
+    private HashSet<Cell> eraseLoop(HashSet<Cell> path, Cell cell){
+        Cell[] array = path.ToArray();
+        int index = Array.IndexOf(array, cell);
+        return new HashSet<Cell>(new ArraySegment<Cell>(array, 0, index));
+    }
+    private void transferPath(HashSet<Cell> path){
         foreach (Cell cell in path){
+            openList.Remove((cell.position.x, cell.position.y));
             closedList.Add(cell);
         }
     }
-
-    private Vector3 averagePosition(Cell a, Cell b){
-        float x = (a.position.x + b.position.x) / 2.0f;
-        float z = (a.position.y + b.position.y) / 2.0f;
-        return new Vector3(x, 1f, z);
-    } 
-    
-    private void processWalls(List<Cell> path){
-        foreach (Cell currentCell in path){
-            foreach (Cell neighbor in getNeighbors(currentCell)){
-                if (currentCell.nextCell != neighbor && neighbor.nextCell != currentCell)
-                    if (neighbor.isVisited && neighbor != null){
-                        Vector3 position = averagePosition(currentCell, neighbor);
-                        if (wallsList.Contains(position))
-                            continue;
-                        wallsList.Add(position);
-                        Vector2Int direction = neighbor.position - currentCell.position;
-                        Quaternion wallRotation = Quaternion.identity;
-                        if (direction == Vector2Int.up || direction == Vector2Int.down)
-                            wallRotation = Quaternion.Euler(0f, 90f, 0f);
-                        Instantiate(wallPrefab, position, wallRotation);  
-                    }
-            }
-        }
-    }
-
 }

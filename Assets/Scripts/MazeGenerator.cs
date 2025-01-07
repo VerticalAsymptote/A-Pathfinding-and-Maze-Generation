@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -19,6 +18,7 @@ public class MazeGenerator : MonoBehaviour{
 
 
 
+    public int intervals = 1;
     private Cell currentCell;
     private HashSet<Cell> path;
     private List<GameObject> pool;
@@ -31,25 +31,27 @@ public class MazeGenerator : MonoBehaviour{
 
     void Update(){
         if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space)){
-            foreach (GameObject g in pool)
-                Destroy(g);
-            if (!closedList.Contains(currentCell)){
-                iternations++;
-                foreach (Cell c in currentCell.neighbors)
-                    pool.Add(Instantiate(neighborPrefab, new Vector3(c.position.x, 0f, c.position.y), c.getRotation()));
-                Cell nextCell = currentCell.neighbors[Random.Range(0, currentCell.neighbors.Count)];
-                if (path.Contains(nextCell)){ 
-                    path = eraseLoop(path, nextCell);
-                    currentCell = path.Last();
-                } else {
-                    currentCell.setRotation(nextCell.position);
-                    path.Add(currentCell);
-                    currentCell = nextCell;
+            for (int i = 0; i < intervals; i++){
+                foreach (GameObject g in pool)
+                    Destroy(g);
+                if (!closedList.Contains(currentCell)){
+                    iternations++;
+                    foreach (Cell c in currentCell.neighbors)
+                        pool.Add(Instantiate(neighborPrefab, new Vector3(c.position.x, 0f, c.position.y), c.getRotation()));
+                    Cell nextCell = currentCell.neighbors[Random.Range(0, currentCell.neighbors.Count)];
+                    if (path.Contains(nextCell)){ 
+                        path = eraseLoop(path, nextCell);
+                        currentCell = path.Last();
+                    } else {
+                        currentCell.setRotation(nextCell.position);
+                        path.Add(currentCell);
+                        currentCell = nextCell;
+                    }
                 }
+                foreach (Cell c in path)
+                    pool.Add(Instantiate(cellPrefab, new Vector3(c.position.x, 0f, c.position.y), c.getRotation()));
+                Debug.Log(iternations);
             }
-            foreach (Cell c in path)
-                pool.Add(Instantiate(cellPrefab, new Vector3(c.position.x, 0f, c.position.y), c.getRotation()));
-            Debug.Log(iternations);
         }
     }
 
@@ -69,6 +71,7 @@ public class MazeGenerator : MonoBehaviour{
 
         
         Cell random = new List<Cell>(openList.Values)[Random.Range(0, openList.Count)]; // Adds random cell to maze to kickstart algorithm
+        Debug.Log("Dest Cell: " + random.position);
         Instantiate(wallPrefab, new Vector3(random.position.x, 1f, random.position.y), Quaternion.identity);
         Instantiate(wallPrefab, new Vector3(random.position.x, 1f, random.position.y), Quaternion.Euler(0f, 90f, 0f));
         closedList.Add(random);

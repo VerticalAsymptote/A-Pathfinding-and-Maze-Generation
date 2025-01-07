@@ -343,6 +343,7 @@ MonoBehaviour:
   cellPrefab: {fileID: 1311166373620391398, guid: 759b53f0801856a45b31c9357da365d2, type: 3}
   wallPrefab: {fileID: 1614798738664726970, guid: 235275e25c539ad498250061e5a1a753, type: 3}
   neighborPrefab: {fileID: 1311166373620391398, guid: d5215dde656ded440b89cadd6093a718, type: 3}
+  intervals: 100
 --- !u!4 &1039471946
 Transform:
   m_ObjectHideFlags: 0

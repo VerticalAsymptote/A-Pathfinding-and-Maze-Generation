@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class Maze : ScriptableObject{
     public int Length {get; private set;} // Length is x-axis
@@ -42,9 +40,9 @@ public class Maze : ScriptableObject{
                     c.neighbors.Add(MazeData[x, y + 1]);
                 if (x + 1 < Length)
                     c.neighbors.Add(MazeData[x + 1, y]);
-                if (y - 1 > 0)
+                if (y - 1 >= 0) // These two lines of code killed me 
                     c.neighbors.Add(MazeData[x, y - 1]);
-                if (x - 1 > 0)
+                if (x - 1 >= 0) // These two lines of code killed me I think ill cry
                     c.neighbors.Add(MazeData[x - 1, y]);
             }        
     }

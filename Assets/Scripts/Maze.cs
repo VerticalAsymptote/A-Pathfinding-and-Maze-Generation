@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class Maze : ScriptableObject{
     public int Length {get; private set;} // Length is x-axis
@@ -7,6 +9,7 @@ public class Maze : ScriptableObject{
     public bool IsGenerated {get; set;} // Check to see if maze has fully generated
     public Cell[,] MazeData {get; private set;} // MazeData that is passed along to AI pathfinding
 
+    private List<GameObject> objects;
     private GameObject CellPrefab, WallPrefab;
 
     // "Constructor" method for scriptable object
@@ -15,6 +18,7 @@ public class Maze : ScriptableObject{
         this.Width = Width;
         this.CellPrefab = CellPrefab;
         this.WallPrefab = WallPrefab;
+        objects = new List<GameObject>();
         IsGenerated = false;
         MazeData = new Cell[Length, Width];
         populateGrid();
@@ -47,14 +51,22 @@ public class Maze : ScriptableObject{
 
     // Loops through MazeData and instantiate cell prefabs
     public void displayMaze(){
-        if (IsGenerated){
+        //if (IsGenerated){
             for (int y = 0; y < Width; y++)
                 for (int x = 0; x < Length; x++){
                     if (MazeData[x, y].isVisited){
-                        Instantiate(CellPrefab, new Vector3(x, 0f, y), MazeData[x, y].getRotation());
+                        objects.Add(Instantiate(CellPrefab, new Vector3(x, 0f, y), MazeData[x, y].getRotation()));
                     }
                 }
+        //}
+        //else throw new Exception("Maze has not been generated!");
+    }
+
+    public void removeMaze(){
+        foreach (GameObject prefab in objects){
+            Vector2Int position = new Vector2Int((int)prefab.transform.position.x, (int)prefab.transform.position.z);
+            MazeData[position.x, position.y].isVisited = false;
+            Destroy(prefab);
         }
-        else throw new Exception("Maze has not been generated!");
     }
 }
